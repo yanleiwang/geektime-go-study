@@ -27,7 +27,8 @@ type registry struct {
 }
 
 func (r *registry) get(entity any) (*model, error) {
-	if m, ok := r.models.Load(reflect.TypeOf(entity)); ok {
+	typ := reflect.TypeOf(entity)
+	if m, ok := r.models.Load(typ); ok {
 		return m.(*model), nil
 	}
 
@@ -35,7 +36,7 @@ func (r *registry) get(entity any) (*model, error) {
 	if err != nil {
 		return nil, err
 	}
-	r.models.Store(reflect.TypeOf(entity), m)
+	r.models.Store(typ, m)
 	return m, nil
 }
 
@@ -72,8 +73,16 @@ func (r *registry) parseModel(entity any) (*model, error) {
 		fds[name] = &field{colName: colName}
 	}
 
+	var tableName string
+	if v, ok := entity.(TableName); ok {
+		tableName = v.TableName()
+	}
+	if tableName == "" {
+		tableName = util.CamelToUnderline(typ.Name())
+	}
+
 	return &model{
-		tableName: util.CamelToUnderline(typ.Name()),
+		tableName: tableName,
 		fieldMap:  fds,
 	}, nil
 }

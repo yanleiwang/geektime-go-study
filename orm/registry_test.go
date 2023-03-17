@@ -128,6 +128,32 @@ func Test_registry_get(t *testing.T) {
 				},
 			},
 		},
+
+		// 利用接口自定义模型信息
+		{
+			name: "table name",
+			val:  &CustomTableName{},
+			wantModel: &model{
+				tableName: "custom_table_name_t",
+				fieldMap: map[string]*field{
+					"Name": {
+						colName: "name",
+					},
+				},
+			},
+		},
+		{
+			name: "empty table name",
+			val:  &EmptyTableName{},
+			wantModel: &model{
+				tableName: "empty_table_name",
+				fieldMap: map[string]*field{
+					"Name": {
+						colName: "name",
+					},
+				},
+			},
+		},
 	}
 
 	r := &registry{}
@@ -141,4 +167,28 @@ func Test_registry_get(t *testing.T) {
 			assert.Equal(t, tc.wantModel, m)
 		})
 	}
+}
+
+type CustomTableName struct {
+	Name string
+}
+
+func (c CustomTableName) TableName() string {
+	return "custom_table_name_t"
+}
+
+type CustomTableNamePtr struct {
+	Name string
+}
+
+func (c *CustomTableNamePtr) TableName() string {
+	return "custom_table_name_ptr_t"
+}
+
+type EmptyTableName struct {
+	Name string
+}
+
+func (c *EmptyTableName) TableName() string {
+	return ""
 }
