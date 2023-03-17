@@ -3,12 +3,18 @@ package reflect
 import "reflect"
 
 type FuncInfo struct {
-	Name        string
-	InputTypes  []reflect.Type
-	OutputTypes []reflect.Type
-	Result      []any
+	Name        string         // 方法名
+	InputTypes  []reflect.Type // 入参类型列表
+	OutputTypes []reflect.Type // 输出类型列表
+	Result      []any          // 输出结果 (入参值为零值的情况下)
 }
 
+// IterateFunc 输出方法信息并且执行调用
+// 注意事项：
+// • 方法接收器
+// • 以结构体作为输入， 那么只能访问到结构体作为接收器的方法
+// • 以指针作为输入， 那么能访问到任何接收器的方法
+// • 输入的第一个参数， 永远都是接收器本身
 func IterateFunc(entity any) (map[string]FuncInfo, error) {
 	typ := reflect.TypeOf(entity)
 	numMethod := typ.NumMethod()
@@ -48,4 +54,3 @@ func IterateFunc(entity any) (map[string]FuncInfo, error) {
 	return res, nil
 
 }
-

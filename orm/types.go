@@ -21,6 +21,7 @@ type Query struct {
 }
 
 // QueryBuilder 作为构建 SQL 这一个单独步骤的顶级抽象
+// 目的是把 构建sql 和 发起查询分开 这样程序逻辑清晰 方便测试
 type QueryBuilder interface {
 	Build() (*Query, error)
 }

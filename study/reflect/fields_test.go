@@ -2,7 +2,7 @@ package reflect
 
 import (
 	"errors"
-	"geektime-go-study/orm/reflect/types"
+	"geektime-go-study/study/reflect/types"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

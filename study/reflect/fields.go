@@ -5,6 +5,8 @@ import (
 	"reflect"
 )
 
+// IterateFields 遍历获取字段的类型和值
+// 只有导出字段才能获取到值
 func IterateFields(entity any) (map[string]any, error) {
 	if entity == nil {
 		return nil, errors.New("不支持 nil")
@@ -44,6 +46,11 @@ func IterateFields(entity any) (map[string]any, error) {
 
 }
 
+// SetField 设置字段的值
+// 只有canset == true 的字段才能设置值, 否则panic
+// canset == true 等价于 导出字段 + 可寻址 (可寻址意味着传的是引用, 对于结构体类型变量而言,就是必须使用结构体指针， 那么结
+// 构体的字段才是可以修改的)
+// 详细参考可见: Go语言精进之路2  59.4节
 func SetField(entity any, field string, newValue any) error {
 	val := reflect.ValueOf(entity)
 	for val.Type().Kind() == reflect.Ptr {

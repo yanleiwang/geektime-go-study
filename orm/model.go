@@ -1,3 +1,4 @@
+// Package orm 解析模型数据(元数据)
 package orm
 
 import (
@@ -15,6 +16,7 @@ type field struct {
 	colName string
 }
 
+// ParseModel 解析模型数据 支持用户传入结构体指针/结构体
 func ParseModel(entity any) (*model, error) {
 	if entity == nil {
 		return nil, errs.ErrPointerOnly

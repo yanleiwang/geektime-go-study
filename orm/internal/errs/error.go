@@ -1,3 +1,4 @@
+// Package errs 中心式的 error 定义 方便后期维护 重构
 package errs
 
 import (

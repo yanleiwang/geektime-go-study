@@ -12,10 +12,12 @@ func valueOf(val any) value {
 	}
 }
 
+// Column 代表 某个列名
 type Column struct {
 	name string
 }
 
+// 实现Expression 标记接口
 func (Column) expr() {}
 
 func C(name string) Column {

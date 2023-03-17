@@ -9,6 +9,7 @@ var (
 	reCamel = regexp.MustCompile(`([a-z0-9])([A-Z])`)
 )
 
+// CamelToUnderline 驼峰转下划线
 // chatgpt写的
 // 问题:  你能用go代码通过正则的方式, 把驼峰式字符串转为下划线分割的字符串吗
 func CamelToUnderline(s string) string {

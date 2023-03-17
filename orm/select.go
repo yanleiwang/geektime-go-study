@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// Selector 使用泛型做类型约束
 type Selector[T any] struct {
 	tbl   string
 	where []Predicate
@@ -36,6 +37,7 @@ func (s *Selector[T]) Build() (*Query, error) {
 	if len(s.where) > 0 {
 		s.sb.WriteString(" WHERE ")
 		p := s.where[0]
+		// 用And 合并多个Predicate
 		for i := 1; i < len(s.where); i++ {
 			p = p.And(s.where[i])
 		}
@@ -111,7 +113,7 @@ func (s *Selector[T]) From(tbl string) *Selector[T] {
 	return s
 }
 
-// Where 设计1
+// Where 设计1 接收字符串和参数作为输入
 // 好处: 简单, 灵活
 // 缺乏校验，用户容易写错，例如写错字段名，漏了括号等
 // func (s *Selector[T]) Where(where string, args ...any)  {
