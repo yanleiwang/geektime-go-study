@@ -12,6 +12,7 @@ type Selector[T any] struct {
 	sb    strings.Builder
 	args  []any
 	model *model
+	db    *DB
 }
 
 func (s *Selector[T]) Build() (*Query, error) {
@@ -22,7 +23,7 @@ func (s *Selector[T]) Build() (*Query, error) {
 		t   T
 		err error
 	)
-	s.model, err = ParseModel(&t)
+	s.model, err = s.db.r.get(&t)
 	if err != nil {
 		return nil, err
 	}
@@ -101,8 +102,10 @@ func (s *Selector[T]) buildExpression(e Expression) error {
 	return nil
 }
 
-func NewSelector[T any]() *Selector[T] {
-	return &Selector[T]{}
+func NewSelector[T any](db *DB) *Selector[T] {
+	return &Selector[T]{
+		db: db,
+	}
 }
 
 // From 考虑 FROM，可行的思路是:

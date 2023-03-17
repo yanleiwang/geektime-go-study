@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestParseModel(t *testing.T) {
+func Test_registry_get(t *testing.T) {
 	type TestModel struct {
 		Id int64
 		// ""
@@ -61,15 +61,15 @@ func TestParseModel(t *testing.T) {
 		},
 	}
 
+	r := &registry{}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			model, err := ParseModel(tc.val)
+			m, err := r.get(tc.val)
 			assert.Equal(t, tc.wantErr, err)
 			if err != nil {
 				return
 			}
-			assert.Equal(t, tc.wantModel, model)
+			assert.Equal(t, tc.wantModel, m)
 		})
 	}
-
 }
