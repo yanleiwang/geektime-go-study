@@ -24,3 +24,7 @@ func NewErrUnsupportedExpressionType(exp any) error {
 func NewErrUnknownField(fd string) error {
 	return fmt.Errorf("orm: 未知字段 %s", fd)
 }
+
+func NewErrInvalidTag(tag string) error {
+	return fmt.Errorf("orm: 非法tag %s", tag)
+}

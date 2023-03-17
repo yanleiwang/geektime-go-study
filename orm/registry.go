@@ -4,6 +4,7 @@ import (
 	"geektime-go-study/orm/internal/errs"
 	"geektime-go-study/orm/internal/util"
 	"reflect"
+	"strings"
 	"sync"
 )
 
@@ -53,18 +54,28 @@ func (r *registry) parseModel(entity any) (*model, error) {
 	}
 
 	numField := typ.NumField()
-
-	model := &model{
-		tableName: util.CamelToUnderline(typ.Name()),
-		fieldMap:  make(map[string]*field, numField),
-	}
+	fds := make(map[string]*field, numField)
 
 	for i := 0; i < numField; i++ {
-		name := typ.Field(i).Name
-		model.fieldMap[name] = &field{colName: util.CamelToUnderline(name)}
+		fdType := typ.Field(i)
+		name := fdType.Name
+		ormTags, err := r.parseTag(fdType.Tag)
+		if err != nil {
+			return nil, err
+		}
+
+		colName := ormTags[tagKeyColumn]
+		if colName == "" {
+			colName = util.CamelToUnderline(name)
+		}
+
+		fds[name] = &field{colName: colName}
 	}
 
-	return model, nil
+	return &model{
+		tableName: util.CamelToUnderline(typ.Name()),
+		fieldMap:  fds,
+	}, nil
 }
 
 // 直接 map
@@ -103,3 +114,22 @@ func (r *registry) parseModel(entity any) (*model, error) {
 // 	r.models[typ] = m
 // 	return m, nil
 // }
+
+func (r *registry) parseTag(tag reflect.StructTag) (map[string]string, error) {
+	ormTag := tag.Get("orm")
+	if ormTag == "" {
+		return map[string]string{}, nil
+	}
+
+	pairs := strings.Split(ormTag, ",")
+	res := make(map[string]string, len(pairs))
+	for _, pair := range pairs {
+		kv := strings.Split(pair, "=")
+		if len(kv) != 2 {
+			return nil, errs.NewErrInvalidTag(pair)
+		}
+
+		res[kv[0]] = kv[1]
+	}
+	return res, nil
+}
