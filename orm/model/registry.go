@@ -1,4 +1,4 @@
-package orm
+package model
 
 import (
 	"geektime-go-study/orm/internal/errs"
@@ -8,9 +8,18 @@ import (
 	"sync"
 )
 
+// Registry 元数据注册中心的抽象
+// 允许用户显式地注册模型  所以 type registry struct的构造函数NewRegistry是导出的
+type Registry interface {
+	// Get 查找元数据
+	Get(val any) (*Model, error)
+	// Register 注册一个模型
+	Register(val any, opts ...ModOption) (*Model, error)
+}
+
 // 这种包变量对测试不友好，缺乏隔离
 // var defaultRegistry = &registry{
-// 	models: make(map[reflect.Type]*model, 16),
+// 	models: make(map[reflect.Type]*Model, 16),
 // }
 
 type registry struct {
@@ -26,22 +35,42 @@ type registry struct {
 	models sync.Map
 }
 
-func (r *registry) get(entity any) (*model, error) {
+func NewRegistry() Registry {
+	return &registry{}
+}
+
+func (r *registry) Get(entity any) (*Model, error) {
 	typ := reflect.TypeOf(entity)
-	if m, ok := r.models.Load(typ); ok {
-		return m.(*model), nil
+	m, ok := r.models.Load(typ)
+	if ok {
+		return m.(*Model), nil
 	}
 
-	m, err := r.parseModel(entity)
+	return r.Register(entity)
+}
+
+func (r *registry) Register(val any, opts ...ModOption) (*Model, error) {
+	m, err := r.parseModel(val)
 	if err != nil {
 		return nil, err
 	}
+
+	for _, opt := range opts {
+		err = opt(m)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	typ := reflect.TypeOf(val)
 	r.models.Store(typ, m)
 	return m, nil
 }
 
 // ParseModel 解析模型数据 支持用户传入结构体指针/结构体
-func (r *registry) parseModel(entity any) (*model, error) {
+// 支持从标签中提取自定义设置
+// 标签形式 orm:"key1=value1,key2=value2"
+func (r *registry) parseModel(entity any) (*Model, error) {
 	if entity == nil {
 		return nil, errs.ErrPointerOnly
 	}
@@ -55,7 +84,7 @@ func (r *registry) parseModel(entity any) (*model, error) {
 	}
 
 	numField := typ.NumField()
-	fds := make(map[string]*field, numField)
+	fds := make(map[string]*Field, numField)
 
 	for i := 0; i < numField; i++ {
 		fdType := typ.Field(i)
@@ -70,7 +99,7 @@ func (r *registry) parseModel(entity any) (*model, error) {
 			colName = util.CamelToUnderline(name)
 		}
 
-		fds[name] = &field{colName: colName}
+		fds[name] = &Field{ColName: colName}
 	}
 
 	var tableName string
@@ -81,14 +110,14 @@ func (r *registry) parseModel(entity any) (*model, error) {
 		tableName = util.CamelToUnderline(typ.Name())
 	}
 
-	return &model{
-		tableName: tableName,
-		fieldMap:  fds,
+	return &Model{
+		TableName: tableName,
+		FieldMap:  fds,
 	}, nil
 }
 
 // 直接 map
-// func (r *registry) get(val any) (*model, error) {
+// func (r *registry) get(val any) (*Model, error) {
 // 	typ := reflect.TypeOf(val)
 // 	m, ok := r.models[typ]
 // 	if !ok {
@@ -102,7 +131,7 @@ func (r *registry) parseModel(entity any) (*model, error) {
 // }
 
 // 使用读写锁的并发安全解决思路
-// func (r *registry) get1(val any) (*model, error) {
+// func (r *registry) get1(val any) (*Model, error) {
 // 	r.lock.RLock()
 // 	typ := reflect.TypeOf(val)
 // 	m, ok := r.models[typ]

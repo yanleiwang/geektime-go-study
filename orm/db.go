@@ -1,14 +1,16 @@
 package orm
 
+import "geektime-go-study/orm/model"
+
 type DB struct {
-	r *registry
+	r model.Registry
 }
 
 type Option func(*DB)
 
 func NewDB(opts ...Option) (*DB, error) {
 	db := &DB{
-		r: &registry{},
+		r: model.NewRegistry(),
 	}
 
 	for _, opt := range opts {

@@ -1,4 +1,4 @@
-package orm
+package model
 
 import (
 	"database/sql"
@@ -19,27 +19,27 @@ func Test_registry_get(t *testing.T) {
 	testCases := []struct {
 		name      string
 		val       any
-		wantModel *model
+		wantModel *Model
 		wantErr   error
 	}{
 		{
 			// 指针
 			name: "pointer",
 			val:  &TestModel{},
-			wantModel: &model{
-				tableName: "test_model",
-				fieldMap: map[string]*field{
+			wantModel: &Model{
+				TableName: "test_model",
+				FieldMap: map[string]*Field{
 					"Id": {
-						colName: "id",
+						ColName: "id",
 					},
 					"FirstName": {
-						colName: "first_name",
+						ColName: "first_name",
 					},
 					"Age": {
-						colName: "age",
+						ColName: "age",
 					},
 					"LastName": {
-						colName: "last_name",
+						ColName: "last_name",
 					},
 				},
 			},
@@ -70,11 +70,11 @@ func Test_registry_get(t *testing.T) {
 				}
 				return &ColumnTag{}
 			}(),
-			wantModel: &model{
-				tableName: "column_tag",
-				fieldMap: map[string]*field{
+			wantModel: &Model{
+				TableName: "column_tag",
+				FieldMap: map[string]*Field{
 					"ID": {
-						colName: "id_123",
+						ColName: "id_123",
 					},
 				},
 			},
@@ -89,11 +89,11 @@ func Test_registry_get(t *testing.T) {
 				}
 				return &EmptyColumn{}
 			}(),
-			wantModel: &model{
-				tableName: "empty_column",
-				fieldMap: map[string]*field{
+			wantModel: &Model{
+				TableName: "empty_column",
+				FieldMap: map[string]*Field{
 					"FirstName": {
-						colName: "first_name",
+						ColName: "first_name",
 					},
 				},
 			},
@@ -119,11 +119,11 @@ func Test_registry_get(t *testing.T) {
 				}
 				return &IgnoreTag{}
 			}(),
-			wantModel: &model{
-				tableName: "ignore_tag",
-				fieldMap: map[string]*field{
+			wantModel: &Model{
+				TableName: "ignore_tag",
+				FieldMap: map[string]*Field{
 					"FirstName": {
-						colName: "first_name",
+						ColName: "first_name",
 					},
 				},
 			},
@@ -133,11 +133,11 @@ func Test_registry_get(t *testing.T) {
 		{
 			name: "table name",
 			val:  &CustomTableName{},
-			wantModel: &model{
-				tableName: "custom_table_name_t",
-				fieldMap: map[string]*field{
+			wantModel: &Model{
+				TableName: "custom_table_name_t",
+				FieldMap: map[string]*Field{
 					"Name": {
-						colName: "name",
+						ColName: "name",
 					},
 				},
 			},
@@ -145,21 +145,21 @@ func Test_registry_get(t *testing.T) {
 		{
 			name: "empty table name",
 			val:  &EmptyTableName{},
-			wantModel: &model{
-				tableName: "empty_table_name",
-				fieldMap: map[string]*field{
+			wantModel: &Model{
+				TableName: "empty_table_name",
+				FieldMap: map[string]*Field{
 					"Name": {
-						colName: "name",
+						ColName: "name",
 					},
 				},
 			},
 		},
 	}
 
-	r := &registry{}
+	r := NewRegistry()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			m, err := r.get(tc.val)
+			m, err := r.Get(tc.val)
 			assert.Equal(t, tc.wantErr, err)
 			if err != nil {
 				return

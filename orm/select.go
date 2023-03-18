@@ -2,6 +2,7 @@ package orm
 
 import (
 	"geektime-go-study/orm/internal/errs"
+	"geektime-go-study/orm/model"
 	"strings"
 )
 
@@ -11,7 +12,7 @@ type Selector[T any] struct {
 	where []Predicate
 	sb    strings.Builder
 	args  []any
-	model *model
+	m     *model.Model
 	db    *DB
 }
 
@@ -23,13 +24,13 @@ func (s *Selector[T]) Build() (*Query, error) {
 		t   T
 		err error
 	)
-	s.model, err = s.db.r.get(&t)
+	s.m, err = s.db.r.Get(&t)
 	if err != nil {
 		return nil, err
 	}
 	if s.tbl == "" {
 		s.sb.WriteByte('`')
-		s.sb.WriteString(s.model.tableName)
+		s.sb.WriteString(s.m.TableName)
 		s.sb.WriteByte('`')
 	} else {
 		s.sb.WriteString(s.tbl)
@@ -84,12 +85,12 @@ func (s *Selector[T]) buildExpression(e Expression) error {
 			s.sb.WriteByte(')')
 		}
 	case Column:
-		field, ok := s.model.fieldMap[exp.name]
+		field, ok := s.m.FieldMap[exp.name]
 		if !ok {
 			return errs.NewErrUnknownField(exp.name)
 		}
 		s.sb.WriteByte('`')
-		s.sb.WriteString(field.colName)
+		s.sb.WriteString(field.ColName)
 		s.sb.WriteByte('`')
 	case value:
 		s.sb.WriteByte('?')
