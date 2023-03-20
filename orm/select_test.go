@@ -4,8 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"geektime-go-study/orm/internal/errs"
+	"geektime-go-study/orm/internal/valuer"
 	"github.com/DATA-DOG/go-sqlmock"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -17,6 +20,17 @@ type TestModel struct {
 	FirstName string
 	Age       int8
 	LastName  *sql.NullString
+}
+
+func (TestModel) CreateSQL() string {
+	return `
+CREATE TABLE IF NOT EXISTS test_model(
+    id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    age INTEGER,
+    last_name TEXT NOT NULL
+)
+`
 }
 
 func TestSelector_Build(t *testing.T) {
@@ -212,4 +226,60 @@ func TestSelector_Get(t *testing.T) {
 		})
 	}
 
+}
+
+// 在 orm 目录下执行
+// go test -bench=BenchmarkQuerier_Get -benchmem -benchtime=10000x
+// 输出
+// goos: linux
+// goarch: amd64
+// pkg: geektime-go-study/orm
+// cpu: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
+// BenchmarkSelector_Get/unsafe-12                    10000            401777 ns/op            3398 B/op        111 allocs/op
+// BenchmarkSelector_Get/reflect-12                   10000            988169 ns/op            3486 B/op        119 allocs/op
+// PASS
+// ok      geektime-go-study/orm   13.959s
+func BenchmarkSelector_Get(b *testing.B) {
+	db, err := Open("sqlite3", fmt.Sprintf("file:benchmark_get.db?cache=shared&mode=memory"))
+	if err != nil {
+		b.Fatal(err)
+	}
+	_, err = db.db.Exec(TestModel{}.CreateSQL())
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	res, err := db.db.Exec("INSERT INTO `test_model`(`id`,`first_name`,`age`,`last_name`)"+
+		"VALUES (?,?,?,?)", 12, "Deng", 18, "Ming")
+
+	if err != nil {
+		b.Fatal(err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		b.Fatal(err)
+	}
+	if affected == 0 {
+		b.Fatal()
+	}
+
+	b.Run("unsafe", func(b *testing.B) {
+		db.valCreator = valuer.NewUnsafeValue
+		for i := 0; i < b.N; i++ {
+			_, err = NewSelector[TestModel](db).Get(context.Background())
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run("reflect", func(b *testing.B) {
+		db.valCreator = valuer.NewReflectValue
+		for i := 0; i < b.N; i++ {
+			_, err = NewSelector[TestModel](db).Get(context.Background())
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
 }
