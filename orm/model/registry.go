@@ -14,7 +14,7 @@ type Registry interface {
 	// Get 查找元数据
 	Get(val any) (*Model, error)
 	// Register 注册一个模型
-	Register(val any, opts ...ModOption) (*Model, error)
+	Register(val any, opts ...Option) (*Model, error)
 }
 
 // 这种包变量对测试不友好，缺乏隔离
@@ -49,7 +49,7 @@ func (r *registry) Get(entity any) (*Model, error) {
 	return r.Register(entity)
 }
 
-func (r *registry) Register(val any, opts ...ModOption) (*Model, error) {
+func (r *registry) Register(val any, opts ...Option) (*Model, error) {
 	m, err := r.parseModel(val)
 	if err != nil {
 		return nil, err
@@ -85,10 +85,11 @@ func (r *registry) parseModel(entity any) (*Model, error) {
 
 	numField := typ.NumField()
 	fds := make(map[string]*Field, numField)
+	cols := make(map[string]*Field, numField)
 
 	for i := 0; i < numField; i++ {
 		fdType := typ.Field(i)
-		name := fdType.Name
+		fdName := fdType.Name
 		ormTags, err := r.parseTag(fdType.Tag)
 		if err != nil {
 			return nil, err
@@ -96,10 +97,18 @@ func (r *registry) parseModel(entity any) (*Model, error) {
 
 		colName := ormTags[tagKeyColumn]
 		if colName == "" {
-			colName = util.CamelToUnderline(name)
+			colName = util.CamelToUnderline(fdName)
 		}
 
-		fds[name] = &Field{ColName: colName}
+		f := &Field{
+			ColName:   colName,
+			FieldType: fdType.Type,
+			FieldName: fdName,
+			Offset:    fdType.Offset,
+		}
+
+		fds[fdName] = f
+		cols[colName] = f
 	}
 
 	var tableName string
@@ -113,6 +122,7 @@ func (r *registry) parseModel(entity any) (*Model, error) {
 	return &Model{
 		TableName: tableName,
 		FieldMap:  fds,
+		ColMap:    cols,
 	}, nil
 }
 

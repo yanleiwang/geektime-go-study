@@ -19,7 +19,7 @@ func TestWithTableName(t *testing.T) {
 	testCases := []struct {
 		name          string
 		val           any
-		opt           ModOption
+		opt           Option
 		wantTableName string
 		wantErr       error
 	}{
@@ -63,7 +63,7 @@ func TestModelWithColumnName(t *testing.T) {
 	testCases := []struct {
 		name        string
 		val         any
-		opt         ModOption
+		opt         Option
 		field       string
 		wantColName string
 		wantErr     error

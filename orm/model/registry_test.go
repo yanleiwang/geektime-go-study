@@ -2,8 +2,10 @@ package model
 
 import (
 	"database/sql"
+	"errors"
 	"geektime-go-study/orm/internal/errs"
 	"github.com/stretchr/testify/assert"
+	"reflect"
 	"testing"
 )
 
@@ -30,16 +32,54 @@ func Test_registry_get(t *testing.T) {
 				TableName: "test_model",
 				FieldMap: map[string]*Field{
 					"Id": {
-						ColName: "id",
+						ColName:   "id",
+						FieldType: reflect.TypeOf(int64(0)),
+						FieldName: "Id",
+						Offset:    0,
 					},
 					"FirstName": {
-						ColName: "first_name",
+						ColName:   "first_name",
+						FieldType: reflect.TypeOf(""),
+						FieldName: "FirstName",
+						Offset:    8,
 					},
 					"Age": {
-						ColName: "age",
+						ColName:   "age",
+						FieldType: reflect.TypeOf(int8(0)),
+						FieldName: "Age",
+						Offset:    24,
 					},
 					"LastName": {
-						ColName: "last_name",
+						ColName:   "last_name",
+						FieldType: reflect.TypeOf(&sql.NullString{}),
+						FieldName: "LastName",
+						Offset:    32,
+					},
+				},
+				ColMap: map[string]*Field{
+					"id": {
+						ColName:   "id",
+						FieldType: reflect.TypeOf(int64(0)),
+						FieldName: "Id",
+						Offset:    0,
+					},
+					"first_name": {
+						ColName:   "first_name",
+						FieldType: reflect.TypeOf(""),
+						FieldName: "FirstName",
+						Offset:    8,
+					},
+					"age": {
+						ColName:   "age",
+						FieldType: reflect.TypeOf(int8(0)),
+						FieldName: "Age",
+						Offset:    24,
+					},
+					"last_name": {
+						ColName:   "last_name",
+						FieldType: reflect.TypeOf(&sql.NullString{}),
+						FieldName: "LastName",
+						Offset:    32,
 					},
 				},
 			},
@@ -47,17 +87,17 @@ func Test_registry_get(t *testing.T) {
 		{
 			name:    "map",
 			val:     map[string]string{},
-			wantErr: errs.ErrPointerOnly,
+			wantErr: errors.New("orm: 只支持一级指针作为输入，例如 *User"),
 		},
 		{
 			name:    "slice",
 			val:     []int{},
-			wantErr: errs.ErrPointerOnly,
+			wantErr: errors.New("orm: 只支持一级指针作为输入，例如 *User"),
 		},
 		{
 			name:    "basic type",
 			val:     0,
-			wantErr: errs.ErrPointerOnly,
+			wantErr: errors.New("orm: 只支持一级指针作为输入，例如 *User"),
 		},
 
 		// 标签相关测试用例
@@ -66,7 +106,7 @@ func Test_registry_get(t *testing.T) {
 			val: func() any {
 				// 我们把测试结构体定义在方法内部，防止被其它用例访问
 				type ColumnTag struct {
-					ID uint64 `orm:"column=id_123"`
+					ID uint64 `orm:"column=id"`
 				}
 				return &ColumnTag{}
 			}(),
@@ -74,7 +114,16 @@ func Test_registry_get(t *testing.T) {
 				TableName: "column_tag",
 				FieldMap: map[string]*Field{
 					"ID": {
-						ColName: "id_123",
+						ColName:   "id",
+						FieldType: reflect.TypeOf(uint64(0)),
+						FieldName: "ID",
+					},
+				},
+				ColMap: map[string]*Field{
+					"id": {
+						ColName:   "id",
+						FieldType: reflect.TypeOf(uint64(0)),
+						FieldName: "ID",
 					},
 				},
 			},
@@ -85,7 +134,7 @@ func Test_registry_get(t *testing.T) {
 			val: func() any {
 				// 我们把测试结构体定义在方法内部，防止被其它用例访问
 				type EmptyColumn struct {
-					FirstName uint64 `orm:"column="`
+					FirstName string `orm:"column="`
 				}
 				return &EmptyColumn{}
 			}(),
@@ -93,19 +142,29 @@ func Test_registry_get(t *testing.T) {
 				TableName: "empty_column",
 				FieldMap: map[string]*Field{
 					"FirstName": {
-						ColName: "first_name",
+						ColName:   "first_name",
+						FieldType: reflect.TypeOf(""),
+						FieldName: "FirstName",
+					},
+				},
+				ColMap: map[string]*Field{
+					"first_name": {
+						ColName:   "first_name",
+						FieldType: reflect.TypeOf(""),
+						FieldName: "FirstName",
 					},
 				},
 			},
 		},
 		{
 			// 如果用户设置了 column，但是没有赋值
-			name: "invalid Tag",
+			name: "invalid tag",
 			val: func() any {
-				type Invalid struct {
+				// 我们把测试结构体定义在方法内部，防止被其它用例访问
+				type InvalidTag struct {
 					FirstName string `orm:"column"`
 				}
-				return &Invalid{}
+				return &InvalidTag{}
 			}(),
 			wantErr: errs.NewErrInvalidTag("column"),
 		},
@@ -115,7 +174,7 @@ func Test_registry_get(t *testing.T) {
 			val: func() any {
 				// 我们把测试结构体定义在方法内部，防止被其它用例访问
 				type IgnoreTag struct {
-					FirstName uint64 `orm:"abc=abc"`
+					FirstName string `orm:"abc=abc"`
 				}
 				return &IgnoreTag{}
 			}(),
@@ -123,7 +182,16 @@ func Test_registry_get(t *testing.T) {
 				TableName: "ignore_tag",
 				FieldMap: map[string]*Field{
 					"FirstName": {
-						ColName: "first_name",
+						ColName:   "first_name",
+						FieldType: reflect.TypeOf(""),
+						FieldName: "FirstName",
+					},
+				},
+				ColMap: map[string]*Field{
+					"first_name": {
+						ColName:   "first_name",
+						FieldType: reflect.TypeOf(""),
+						FieldName: "FirstName",
 					},
 				},
 			},
@@ -137,7 +205,37 @@ func Test_registry_get(t *testing.T) {
 				TableName: "custom_table_name_t",
 				FieldMap: map[string]*Field{
 					"Name": {
-						ColName: "name",
+						ColName:   "name",
+						FieldName: "Name",
+						FieldType: reflect.TypeOf(""),
+					},
+				},
+				ColMap: map[string]*Field{
+					"name": {
+						ColName:   "name",
+						FieldName: "Name",
+						FieldType: reflect.TypeOf(""),
+					},
+				},
+			},
+		},
+		{
+			name: "table name ptr",
+			val:  &CustomTableNamePtr{},
+			wantModel: &Model{
+				TableName: "custom_table_name_ptr_t",
+				FieldMap: map[string]*Field{
+					"Name": {
+						ColName:   "name",
+						FieldName: "Name",
+						FieldType: reflect.TypeOf(""),
+					},
+				},
+				ColMap: map[string]*Field{
+					"name": {
+						ColName:   "name",
+						FieldName: "Name",
+						FieldType: reflect.TypeOf(""),
 					},
 				},
 			},
@@ -149,7 +247,16 @@ func Test_registry_get(t *testing.T) {
 				TableName: "empty_table_name",
 				FieldMap: map[string]*Field{
 					"Name": {
-						ColName: "name",
+						ColName:   "name",
+						FieldName: "Name",
+						FieldType: reflect.TypeOf(""),
+					},
+				},
+				ColMap: map[string]*Field{
+					"name": {
+						ColName:   "name",
+						FieldName: "Name",
+						FieldType: reflect.TypeOf(""),
 					},
 				},
 			},

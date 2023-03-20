@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"context"
 	"geektime-go-study/orm/internal/errs"
 	"geektime-go-study/orm/model"
 	"strings"
@@ -14,6 +15,51 @@ type Selector[T any] struct {
 	args  []any
 	m     *model.Model
 	db    *DB
+}
+
+func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
+	// step 1 构建sql
+	query, err := s.Build()
+	if err != nil {
+		return nil, err
+	}
+
+	// step 2 发起查询
+	// s.db 是我们定义的 DB
+	// s.db.db 则是 sql.DB
+	// 使用 QueryContext，从而和 GetMulti 能够复用处理结果集的代码
+	rows, err := s.db.db.QueryContext(ctx, query.SQL, query.Args...)
+	if err != nil {
+		return nil, err
+	}
+
+	// 没有数据的话, 返回error 跟sql包语义一致
+	if !rows.Next() {
+		return nil, ErrNoRows
+	}
+
+	// step 3 结果集转为对象
+	// step 3.1 创建对象
+	val := new(T)
+	// step 3.2 获取元数据
+	meta, err := s.db.r.Get(val)
+	if err != nil {
+		return nil, err
+	}
+	// step 3.3 创建转换对象
+	creator := s.db.valCreator(val, meta)
+	// step 3.4 设置值
+	err = creator.SetColumns(rows)
+	if err != nil {
+		return nil, err
+	}
+	return val, err
+
+}
+
+func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (s *Selector[T]) Build() (*Query, error) {

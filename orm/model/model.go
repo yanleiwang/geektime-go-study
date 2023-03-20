@@ -1,29 +1,38 @@
 // Package model 解析模型数据(元数据)
 package model
 
-import "geektime-go-study/orm/internal/errs"
+import (
+	"geektime-go-study/orm/internal/errs"
+	"reflect"
+)
 
 // Model 元数据
 // Model是导出的原因是我们暴露了Register
 type Model struct {
-	TableName string
-	FieldMap  map[string]*Field
+	TableName string            // 结构体对应的表名
+	FieldMap  map[string]*Field // key: 字段名
+	ColMap    map[string]*Field // key: 列名
+
 }
 
+// Field 字段
 type Field struct {
-	ColName string
+	ColName   string       // 列名
+	FieldName string       // 字段名
+	FieldType reflect.Type // 字段类型
+	Offset    uintptr
 }
 
-type ModOption func(model *Model) error
+type Option func(model *Model) error
 
-func WithTableName(name string) ModOption {
+func WithTableName(name string) Option {
 	return func(m *Model) error {
 		m.TableName = name
 		return nil
 	}
 }
 
-func WithColumnName(field string, columnName string) ModOption {
+func WithColumnName(field string, columnName string) Option {
 	return func(m *Model) error {
 		fd, ok := m.FieldMap[field]
 		if !ok {

@@ -1,8 +1,11 @@
 package orm
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"geektime-go-study/orm/internal/errs"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -17,7 +20,7 @@ type TestModel struct {
 }
 
 func TestSelector_Build(t *testing.T) {
-	db, err := NewDB()
+	db, err := OpenDB(nil)
 	require.NoError(t, err)
 	newTestModel := NewSelector[TestModel]
 
@@ -125,6 +128,87 @@ func TestSelector_Build(t *testing.T) {
 			}
 			assert.Equal(t, tc.wantQuery, res)
 
+		})
+	}
+
+}
+
+func TestSelector_Get(t *testing.T) {
+	mockDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer func() {
+		_ = mockDB.Close()
+	}()
+
+	db, err := OpenDB(mockDB)
+	require.NoError(t, err)
+
+	testCases := []struct {
+		name     string
+		query    string
+		mockErr  error
+		mockRows *sqlmock.Rows
+		wantErr  error
+		wantVal  *TestModel
+	}{
+		{
+			// 查询返回错误
+			name:    "query error",
+			mockErr: errors.New("invalid query"),
+			wantErr: errors.New("invalid query"),
+			query:   "SELECT .*",
+		},
+		{
+			name:     "no row",
+			wantErr:  ErrNoRows,
+			query:    "SELECT .*",
+			mockRows: sqlmock.NewRows([]string{"id"}),
+		},
+		{
+			name:    "too many column",
+			wantErr: errs.ErrTooManyReturnedColumns,
+			query:   "SELECT .*",
+			mockRows: func() *sqlmock.Rows {
+				res := sqlmock.NewRows([]string{"id", "first_name", "age", "last_name", "extra_column"})
+				// 因为 数据库返回来的其实都是字符串 所以这里可以全用字符串或字节数组.
+				res.AddRow([]byte("1"), []byte("Da"), []byte("18"), []byte("Ming"), []byte("nothing"))
+				return res
+			}(),
+		},
+		{
+			name:  "get data",
+			query: "SELECT .*",
+			mockRows: func() *sqlmock.Rows {
+				res := sqlmock.NewRows([]string{"id", "first_name", "age", "last_name"})
+				res.AddRow([]byte("1"), []byte("Da"), []byte("18"), []byte("Ming"))
+				return res
+			}(),
+			wantVal: &TestModel{
+				Id:        1,
+				FirstName: "Da",
+				Age:       18,
+				LastName:  &sql.NullString{String: "Ming", Valid: true},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		exp := mock.ExpectQuery(tc.query)
+		if tc.mockErr != nil {
+			exp.WillReturnError(tc.mockErr)
+		} else {
+			exp.WillReturnRows(tc.mockRows)
+		}
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := NewSelector[TestModel](db).Get(context.Background())
+			assert.Equal(t, tc.wantErr, err)
+			if err != nil {
+				return
+			}
+			assert.Equal(t, tc.wantVal, res)
 		})
 	}
 

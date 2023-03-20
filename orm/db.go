@@ -1,32 +1,62 @@
 package orm
 
-import "geektime-go-study/orm/model"
+import (
+	"database/sql"
+	"geektime-go-study/orm/internal/valuer"
+	"geektime-go-study/orm/model"
+)
 
 type DB struct {
-	r model.Registry
+	r          model.Registry // 元数据注册中心
+	db         *sql.DB
+	valCreator valuer.Creator // 负责创建结构体的抽象(反射 or unsafe 实现, 默认unsafe实现)
 }
 
-type Option func(*DB)
+type DBOption func(*DB)
 
-func NewDB(opts ...Option) (*DB, error) {
-	db := &DB{
-		r: model.NewRegistry(),
+func DBWithReflectValuer() DBOption {
+	return func(db *DB) {
+		db.valCreator = valuer.NewReflectValue
+	}
+}
+
+func DBWithRegistry(r model.Registry) DBOption {
+	return func(db *DB) {
+		db.r = r
+	}
+}
+
+func Open(driver string, dsn string, opts ...DBOption) (*DB, error) {
+	db, err := sql.Open(driver, dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	return OpenDB(db, opts...)
+}
+
+func OpenDB(db *sql.DB, opts ...DBOption) (*DB, error) {
+	ret := &DB{
+		r:          model.NewRegistry(),
+		db:         db,
+		valCreator: valuer.NewUnsafeValue,
 	}
 
 	for _, opt := range opts {
-		opt(db)
+		opt(ret)
 	}
-	return db, nil
+	return ret, nil
 }
 
-// MustNewDB 创建一个 DB，如果失败则会 panic
+// MustOpen 创建一个 DB，如果失败则会 panic
 // 我个人不太喜欢这种
-func MustNewDB(opts ...Option) *DB {
-	db, err := NewDB(opts...)
+func MustOpen(driver string, dsn string, opts ...DBOption) *DB {
+	ret, err := Open(driver, dsn, opts...)
 	if err != nil {
 		panic(err)
 	}
-	return db
+
+	return ret
 }
 
 //// 按理说 NewSelector 之类的东西应该是定义在 DB 之上的
