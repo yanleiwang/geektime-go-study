@@ -6,6 +6,8 @@ import (
 )
 
 // Valuer 是对结构体实例的内部抽象
+// 也就是说 我们把要返回的结构体，包装成一个 Value 对象。
+// 采用这种设计方案 而不采用ResultSetHandler 是为了能反复利用这个value对象
 type Valuer interface {
 	// SetColumns 设置新值
 	SetColumns(rows *sql.Rows) error

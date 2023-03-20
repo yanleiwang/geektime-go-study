@@ -7,6 +7,7 @@ import (
 	"reflect"
 )
 
+// reflectValue 基于反射的 Value
 type reflectValue struct {
 	val  reflect.Value
 	meta *model.Model
@@ -15,6 +16,8 @@ type reflectValue struct {
 // 确保 Creator 修改的时候, 能够得到提示
 var _ Creator = NewReflectValue
 
+// NewReflectValue 返回一个封装好的，基于反射实现的 Value
+// 输入 val 必须是一个指向结构体实例的指针，而不能是任何其它类型
 func NewReflectValue(val any, meta *model.Model) Valuer {
 	return &reflectValue{
 		val:  reflect.ValueOf(val),

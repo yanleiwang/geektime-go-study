@@ -38,6 +38,11 @@ func NewUnsafeAccessor(entity any) *UnsafeAccessor {
 	}
 }
 
+// 读： *(*T)(ptr)， T 是目标类型，
+// 如果类型不知道， 只能拿到反射的 Type，
+// 那么可以用 reflect.NewAt(typ, ptr).Elem()。
+// ptr 是字段偏移量：
+// ptr = 结构体起始地址 + 字段偏移量
 func (a *UnsafeAccessor) Field(field string) (any, error) {
 	// 起始地址 + 字段偏移量
 	fd, ok := a.fields[field]
@@ -53,6 +58,11 @@ func (a *UnsafeAccessor) Field(field string) (any, error) {
 	return reflect.NewAt(fd.typ, fdAddress).Elem().Interface(), nil
 }
 
+// 写： *(*T)(ptr) = val， T 是目标类型。
+// 如果类型不知道， 只能拿到反射的 Type，
+// 那么可以用 reflect.NewAt(T, ptr).Elem().Set(reflect.ValueOf(val))。
+// ptr 是字段偏移量：
+// ptr = 结构体起始地址 + 字段偏移量
 func (a *UnsafeAccessor) SetField(field string, val any) error {
 	// 起始地址 + 字段偏移量
 	fd, ok := a.fields[field]
