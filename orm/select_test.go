@@ -33,6 +33,57 @@ CREATE TABLE IF NOT EXISTS test_model(
 `
 }
 
+// memoryDB 返回一个基于内存的 ORM，它使用的是 sqlite3 内存模式。
+func memoryDB(t *testing.T) *DB {
+	orm, err := Open("sqlite3", "file:test.db?cache=shared&mode=memory")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return orm
+}
+
+func TestSelector_Select(t *testing.T) {
+	db := memoryDB(t)
+	testCases := []struct {
+		name      string
+		q         QueryBuilder
+		wantQuery *Query
+		wantErr   error
+	}{
+		{
+			name: "all",
+			q:    NewSelector[TestModel](db),
+			wantQuery: &Query{
+				SQL: "SELECT * FROM `test_model`;",
+			},
+		},
+		{
+			name:    "invalid column",
+			q:       NewSelector[TestModel](db).Select(C("Invalid")),
+			wantErr: errs.NewErrUnknownField("Invalid"),
+		},
+		{
+			name: "partial column",
+			q:    NewSelector[TestModel](db).Select(C("Id"), C("FirstName")),
+			wantQuery: &Query{
+				SQL: "SELECT `id`,`first_name` FROM `test_model`;",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			query, err := tc.q.Build()
+			assert.Equal(t, tc.wantErr, err)
+			if err != nil {
+				return
+			}
+			assert.Equal(t, tc.wantQuery, query)
+		})
+	}
+
+}
+
 func TestSelector_Build(t *testing.T) {
 	db, err := OpenDB(nil)
 	require.NoError(t, err)

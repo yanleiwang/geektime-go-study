@@ -20,6 +20,9 @@ type Column struct {
 // 实现Expression 标记接口
 func (Column) expr() {}
 
+// 标记 Selectable
+func (Column) selectable() {}
+
 func C(name string) Column {
 	return Column{name: name}
 }

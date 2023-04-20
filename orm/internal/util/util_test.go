@@ -11,12 +11,8 @@ func TestCamelToUnderline(t *testing.T) {
 		srcStr  string
 		wantStr string
 	}{
-		// 我们这些用例就是为了确保
-		// 在忘记 underscoreName 的行为特性之后
-		// 可以从这里找回来
-		// 比如 userPWDuser -> user_pwduser 而不是 user_pwd_user
 		{
-			name:    "upper cases",
+			name:    "Abbreviation",
 			srcStr:  "ID",
 			wantStr: "id",
 		},
@@ -25,6 +21,10 @@ func TestCamelToUnderline(t *testing.T) {
 			srcStr:  "Table1Name",
 			wantStr: "table1_name",
 		},
+		// 我们这些用例就是为了确保
+		// 在忘记 CamelToUnderline 的行为特性之后
+		// 可以从这里找回来
+		// 比如 userPWDuser -> user_pwduser 而不是 user_pwd_user
 		{
 			name:    "test 3",
 			srcStr:  "userPWD",

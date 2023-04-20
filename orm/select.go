@@ -9,12 +9,19 @@ import (
 
 // Selector 使用泛型做类型约束
 type Selector[T any] struct {
-	tbl   string
-	where []Predicate
-	sb    strings.Builder
-	args  []any
-	m     *model.Model
-	db    *DB
+	tbl     string
+	where   []Predicate
+	sb      strings.Builder
+	args    []any
+	m       *model.Model
+	db      *DB
+	columns []Selectable
+}
+
+func NewSelector[T any](db *DB) *Selector[T] {
+	return &Selector[T]{
+		db: db,
+	}
 }
 
 func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
@@ -64,7 +71,6 @@ func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
 
 func (s *Selector[T]) Build() (*Query, error) {
 	s.sb.Reset()
-	s.sb.WriteString("SELECT * FROM ")
 	// 决策：如果用户指定了表名，就直接使用，不会使用反引号；否则使用反引号括起来。
 	var (
 		t   T
@@ -74,6 +80,24 @@ func (s *Selector[T]) Build() (*Query, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.sb.WriteString("SELECT ")
+
+	if len(s.columns) == 0 {
+		s.sb.WriteString("*")
+	} else {
+		for i, c := range s.columns {
+			if i != 0 {
+				s.sb.WriteByte(',')
+			}
+			err := s.buildColumn(c.(Column))
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	s.sb.WriteString(" FROM ")
+
 	if s.tbl == "" {
 		s.sb.WriteByte('`')
 		s.sb.WriteString(s.m.TableName)
@@ -131,13 +155,7 @@ func (s *Selector[T]) buildExpression(e Expression) error {
 			s.sb.WriteByte(')')
 		}
 	case Column:
-		field, ok := s.m.FieldMap[exp.name]
-		if !ok {
-			return errs.NewErrUnknownField(exp.name)
-		}
-		s.sb.WriteByte('`')
-		s.sb.WriteString(field.ColName)
-		s.sb.WriteByte('`')
+		return s.buildColumn(exp)
 	case value:
 		s.sb.WriteByte('?')
 		s.args = append(s.args, exp.val)
@@ -149,10 +167,15 @@ func (s *Selector[T]) buildExpression(e Expression) error {
 	return nil
 }
 
-func NewSelector[T any](db *DB) *Selector[T] {
-	return &Selector[T]{
-		db: db,
+func (s *Selector[T]) buildColumn(c Column) error {
+	field, ok := s.m.FieldMap[c.name]
+	if !ok {
+		return errs.NewErrUnknownField(c.name)
 	}
+	s.sb.WriteByte('`')
+	s.sb.WriteString(field.ColName)
+	s.sb.WriteByte('`')
+	return nil
 }
 
 // From 考虑 FROM，可行的思路是:
@@ -173,4 +196,15 @@ func (s *Selector[T]) From(tbl string) *Selector[T] {
 func (s *Selector[T]) Where(ps ...Predicate) *Selector[T] {
 	s.where = ps
 	return s
+}
+
+func (s *Selector[T]) Select(cols ...Selectable) *Selector[T] {
+	s.columns = cols
+	return s
+}
+
+// Selectable 标记接口, 可以作为select xxx 里面 的xxx
+// 有 Column
+type Selectable interface {
+	selectable()
 }
