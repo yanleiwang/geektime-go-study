@@ -20,11 +20,11 @@ func (i *item) IsExpired(t time.Time) bool {
 }
 
 type BuildInMapCache struct {
-	data      map[string]*item
-	mutex     sync.RWMutex
-	close     chan struct{}
-	maxCnt    int                       // 每次轮询过期key 最大次数
-	onEvicted func(key string, val any) // 当删除key的时候 执行
+	data       map[string]*item
+	mutex      sync.RWMutex
+	close      chan struct{}
+	maxLoopCnt int                       // 每次轮询过期key 最大次数
+	onEvicted  func(key string, val any) // 当删除key的时候 执行
 }
 
 func (c *BuildInMapCache) Get(ctx context.Context, key string) (any, error) {
@@ -52,15 +52,18 @@ func (c *BuildInMapCache) Get(ctx context.Context, key string) (any, error) {
 	return res.val, nil
 }
 
-func (c *BuildInMapCache) Set(ctx context.Context, key string, val any, expiration time.Duration) error {
+func (b *BuildInMapCache) Set(ctx context.Context, key string, val any, expiration time.Duration) error {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.set(key, val, expiration)
+}
+
+func (b *BuildInMapCache) set(key string, val any, expiration time.Duration) error {
 	var dl time.Time
 	if expiration > 0 {
 		dl = time.Now().Add(expiration)
 	}
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	c.data[key] = &item{
+	b.data[key] = &item{
 		val:      val,
 		deadline: dl,
 	}
@@ -88,6 +91,18 @@ func (c *BuildInMapCache) delete(k string) {
 	c.onEvicted(k, itm.val)
 }
 
+func (c *BuildInMapCache) LoadAndDelete(ctx context.Context, key string) (any, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	val, ok := c.data[key]
+	if !ok {
+		return nil, internal.NewErrKeyNotFound(key)
+	}
+	c.delete(key)
+	return val.val, nil
+
+}
+
 type BuildInMapCacheOption func(cache *BuildInMapCache)
 
 func BuildInMapCacheWithEvicted(fn func(key string, val any)) BuildInMapCacheOption {
@@ -98,9 +113,9 @@ func BuildInMapCacheWithEvicted(fn func(key string, val any)) BuildInMapCacheOpt
 
 func NewBuildInMapCache(interval time.Duration, opts ...BuildInMapCacheOption) *BuildInMapCache {
 	res := &BuildInMapCache{
-		data:   make(map[string]*item, 10),
-		close:  make(chan struct{}),
-		maxCnt: 10000,
+		data:       make(map[string]*item, 10),
+		close:      make(chan struct{}),
+		maxLoopCnt: 10000,
 		onEvicted: func(key string, val any) {
 
 		},
@@ -111,6 +126,7 @@ func NewBuildInMapCache(interval time.Duration, opts ...BuildInMapCacheOption) *
 	}
 
 	go func() {
+		//定时删除 定量过期key
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
@@ -125,7 +141,7 @@ func NewBuildInMapCache(interval time.Duration, opts ...BuildInMapCacheOption) *
 						res.delete(k)
 					}
 					cnt++
-					if cnt > res.maxCnt {
+					if cnt > res.maxLoopCnt {
 						break
 					}
 				}

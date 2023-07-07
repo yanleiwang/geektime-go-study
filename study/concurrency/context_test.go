@@ -26,6 +26,7 @@ func TestContext_WithValue(t *testing.T) {
 	t.Log(val)
 }
 
+// context包的经典用法----控制超时
 func TestTimeoutExample(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -37,6 +38,9 @@ func TestTimeoutExample(t *testing.T) {
 		bsChan <- struct{}{}
 	}()
 
+	// 同时监听两个
+	//channel，一个是正常业务结束的
+	//channel，Done() 返回的。
 	select {
 	case <-ctx.Done():
 		t.Log("超时了")

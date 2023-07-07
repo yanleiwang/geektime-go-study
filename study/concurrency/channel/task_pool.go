@@ -41,6 +41,7 @@ func NewTaskPool(numG int, numT int) *TaskPool {
 	return res
 }
 
+// 提交任务
 func (p *TaskPool) Do(ctx context.Context, t Task) error {
 	//p.tasks <- t
 	//return nil

@@ -25,6 +25,7 @@ func TestBuildInMapCache_Get(t *testing.T) {
 				return NewBuildInMapCache(time.Second)
 			},
 		},
+
 		{
 			name:    "normal",
 			key:     "normal",
