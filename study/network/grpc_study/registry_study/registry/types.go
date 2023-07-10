@@ -32,4 +32,11 @@ type Registry interface {
 type ServiceInstance struct {
 	Name    string
 	Address string
+	// 这边你可以任意加字段，完全取决于你的服务治理需要什么字段
+	Weight uint32
+	// 可以考虑再加一个分组字段
+	Group string
+
+	// 也可以用这个
+	//Attributes map[string]string
 }

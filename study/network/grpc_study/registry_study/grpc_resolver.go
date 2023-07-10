@@ -3,6 +3,7 @@ package registry_study
 import (
 	"context"
 	"geektime-go-study/study/network/grpc_study/registry_study/registry"
+	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/resolver"
 	"time"
 )
@@ -62,6 +63,8 @@ func (g *grpcResolver) resolve() {
 	for _, ins := range instances {
 		address = append(address, resolver.Address{
 			Addr: ins.Address,
+			Attributes: attributes.New("weight", ins.Weight).
+				WithValue("group", ins.Group),
 		})
 	}
 	err = g.cc.UpdateState(resolver.State{

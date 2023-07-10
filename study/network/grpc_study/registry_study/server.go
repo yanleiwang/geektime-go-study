@@ -19,9 +19,24 @@ type Server struct {
 	timeout time.Duration
 
 	*grpc.Server
+
+	weight uint32
+	group  string
 }
 
 type Option func(s *Server)
+
+func WithGroup(group string) Option {
+	return func(server *Server) {
+		server.group = group
+	}
+}
+
+func WithWeight(weight uint32) Option {
+	return func(server *Server) {
+		server.weight = weight
+	}
+}
 
 func WithTimeout(timeout time.Duration) Option {
 	return func(s *Server) {
@@ -58,6 +73,7 @@ func (s *Server) Start(addr string) error {
 		s.si = registry.ServiceInstance{
 			Name:    s.name,
 			Address: l.Addr().String(), // 如果是部署在容器内, 要替换成容器内的服务名
+			Group:   s.group,
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 		err = s.register.Register(ctx, s.si)
