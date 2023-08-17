@@ -4,11 +4,14 @@ go 1.19
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/go-zookeeper/zk v1.0.3
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/redis/go-redis/v9 v9.0.3
+	github.com/samuel/go-zookeeper v0.0.0-20201211165307-7117e9ea2414
 	github.com/silenceper/pool v1.0.0
 	github.com/stretchr/testify v1.8.2
 	go.etcd.io/etcd/api/v3 v3.5.9
